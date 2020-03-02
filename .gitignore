@@ -1,0 +1,5 @@
+= Kafka Network
+
+The communication is done via the TCP protocol. In order to read or write partitions, a Kafka client directly connects to the Kafka brokers which host these partitions.
+To achive this, Kafka clients first perform a boostrapping, during which all Kafka brokers and the associated partitions are discovered.
+

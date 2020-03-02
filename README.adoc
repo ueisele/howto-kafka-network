@@ -1,0 +1,7 @@
+= Kafka Network
+
+== Kafka Communication
+
+=== Bootstrapping
+
+image::image/wireshark-kafka-bootstrapping.png[]
