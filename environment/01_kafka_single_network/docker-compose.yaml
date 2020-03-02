@@ -1,0 +1,141 @@
+---
+version: '2.2'
+
+networks:
+  kafka:
+    driver: bridge
+  zookeeper:
+    driver: bridge
+
+services:
+
+  # Kafka
+  kafka1:
+    image: confluentinc/cp-kafka:${VERSION_CONFLUENT}
+    restart: unless-stopped
+    hostname: kafka1
+    depends_on:
+      - zookeeper1
+      - zookeeper2
+      - zookeeper3
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper1.${DOMAIN_INTERN}:2181,zookeeper2.${DOMAIN_INTERN}:2181,zookeeper3.${DOMAIN_INTERN}:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka1.${DOMAIN_INTERN}:9092
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_MIN_INSYNC_REPLICAS: 2
+      KAFKA_CONFLUENT_SUPPORT_METRICS_ENABLE: "false"
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    networks:
+      kafka:
+        aliases:
+          - kafka.${DOMAIN_INTERN}
+          - kafka1.${DOMAIN_INTERN}
+      zookeeper:
+        aliases:
+          - kafka.${DOMAIN_INTERN}
+          - kafka1.${DOMAIN_INTERN}
+
+  kafka2:
+    image: confluentinc/cp-kafka:${VERSION_CONFLUENT}
+    restart: unless-stopped
+    hostname: kafka2
+    depends_on:
+      - zookeeper1
+      - zookeeper2
+      - zookeeper3
+    environment:
+      KAFKA_BROKER_ID: 2
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper1.${DOMAIN_INTERN}:2181,zookeeper2.${DOMAIN_INTERN}:2181,zookeeper3.${DOMAIN_INTERN}:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka2.${DOMAIN_INTERN}:9092
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_MIN_INSYNC_REPLICAS: 2
+      KAFKA_CONFLUENT_SUPPORT_METRICS_ENABLE: "false"
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    networks:
+      kafka:
+        aliases:
+          - kafka.${DOMAIN_INTERN}
+          - kafka2.${DOMAIN_INTERN}
+      zookeeper:
+        aliases:
+          - kafka.${DOMAIN_INTERN}
+          - kafka2.${DOMAIN_INTERN}
+
+  kafka3:
+    image: confluentinc/cp-kafka:${VERSION_CONFLUENT}
+    restart: unless-stopped
+    hostname: kafka3
+    depends_on:
+      - zookeeper1
+      - zookeeper2
+      - zookeeper3
+    environment:
+      KAFKA_BROKER_ID: 3
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper1.${DOMAIN_INTERN}:2181,zookeeper2.${DOMAIN_INTERN}:2181,zookeeper3.${DOMAIN_INTERN}:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka3.${DOMAIN_INTERN}:9092
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_MIN_INSYNC_REPLICAS: 2
+      KAFKA_CONFLUENT_SUPPORT_METRICS_ENABLE: "false"
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    networks:
+      kafka:
+        aliases:
+          - kafka.${DOMAIN_INTERN}
+          - kafka3.${DOMAIN_INTERN}
+      zookeeper:
+        aliases:
+          - kafka.${DOMAIN_INTERN}
+          - kafka3.${DOMAIN_INTERN}
+  
+  # Zookeeper
+  zookeeper1:
+    image: confluentinc/cp-zookeeper:${VERSION_CONFLUENT}
+    restart: unless-stopped
+    hostname: zookeeper1
+    environment:
+      ZOOKEEPER_SERVER_ID: 1
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_INIT_LIMIT: 5
+      ZOOKEEPER_SYNC_LIMIT: 2
+      ZOOKEEPER_SERVERS: zookeeper1.${DOMAIN_INTERN}:2888:3888;zookeeper2.${DOMAIN_INTERN}:2888:3888;zookeeper3.${DOMAIN_INTERN}:2888:3888
+    networks:
+      zookeeper:
+        aliases:
+          - zookeeper1.${DOMAIN_INTERN}
+
+  zookeeper2:
+    image: confluentinc/cp-zookeeper:${VERSION_CONFLUENT}
+    restart: unless-stopped
+    hostname: zookeeper2
+    environment:
+      ZOOKEEPER_SERVER_ID: 2
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_INIT_LIMIT: 5
+      ZOOKEEPER_SYNC_LIMIT: 2
+      ZOOKEEPER_SERVERS: zookeeper1.${DOMAIN_INTERN}:2888:3888;zookeeper2.${DOMAIN_INTERN}:2888:3888;zookeeper3.${DOMAIN_INTERN}:2888:3888
+    networks:
+      zookeeper:
+        aliases:
+          - zookeeper2.${DOMAIN_INTERN}
+
+  zookeeper3:
+    image: confluentinc/cp-zookeeper:${VERSION_CONFLUENT}
+    restart: unless-stopped
+    hostname: zookeeper3
+    environment:
+      ZOOKEEPER_SERVER_ID: 3
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_INIT_LIMIT: 5
+      ZOOKEEPER_SYNC_LIMIT: 2
+      ZOOKEEPER_SERVERS: zookeeper1.${DOMAIN_INTERN}:2888:3888;zookeeper2.${DOMAIN_INTERN}:2888:3888;zookeeper3.${DOMAIN_INTERN}:2888:3888
+    networks:
+      zookeeper:
+        aliases:
+          - zookeeper3.${DOMAIN_INTERN}
