@@ -4,4 +4,4 @@
 
 === Bootstrapping
 
-image::image/wireshark-kafka-bootstrapping.png[]
+image::img/wireshark-kafka-bootstrapping.png[]
