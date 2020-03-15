@@ -5,3 +5,20 @@
 === Bootstrapping
 
 image::img/wireshark-kafka-bootstrapping.png[]
+
+== ToDo
+
+=== Scenario
+
+In each scenario the goal is to monitor Kafka traffic with Wireshark or Termshark.
+
+* Single Kafka network with deticated Zookeeper network
+* Distinct network for Kafka replication
+* Tracing Kafka requests with Envoy proxy
+* Enable access to Kafka from another network, which can not directly access the Kafka network
+** Two scenarios (Traefik and Envoy)
+
+=== Network Simulation or Emulation Tools
+
+* http://mininet.org/
+* https://containernet.github.io/
