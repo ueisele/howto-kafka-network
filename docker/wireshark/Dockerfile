@@ -1,7 +1,7 @@
 ARG DEBIAN_RELEASE=bullseye
 ARG WIRESHARK_VERSION=3.2.2
 
-# Build Wireshark
+## Build Wireshark ##
 FROM debian:${DEBIAN_RELEASE} as wireshark-build
 
 ADD https://raw.githubusercontent.com/wireshark/wireshark/master/tools/debian-setup.sh /
@@ -25,21 +25,28 @@ RUN cd /root/wireshark \
 	&& git pull \
 	&& git checkout wireshark-${WIRESHARK_VERSION}
 RUN cd /root/wireshark \
-	&& dpkg-buildpackage -us -uc -rfakeroot
+	&& dpkg-buildpackage -us -uc -rfakeroot \
+	&& git clean -Xdf
 
-# Create Base Image
-FROM debian:${DEBIAN_RELEASE}-slim as base
+
+## Create Base Image ##
+FROM debian:${DEBIAN_RELEASE}-slim as net-tools
 
 # Install tools
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
-	&& apt-get install gnupg apt-utils ca-certificates -y \
+	&& apt-get install gnupg apt-utils ca-certificates locales -y \
 	&& apt-get update \
 	&& apt-get upgrade -y \
-	&& apt-get -y install procps vim less expect jq net-tools dnsutils telnet netcat curl wget httpie \
+	&& apt-get -y install procps vim neovim less expect jq net-tools iproute2 iputils-ping iputils-tracepath iputils-arping telnet dnsutils netcat curl wget httpie \
     && apt-get autoremove -y \
     && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/*
+ARG LOCALE=de_DE
+RUN sed -i -e "s/# *${LOCALE}.UTF-8 UTF-8/${LOCALE}.UTF-8 UTF-8/" /etc/locale.gen && \
+    dpkg-reconfigure --frontend=noninteractive locales && \
+    update-locale LANG=${LOCALE}.UTF-8
+ENV LANG ${LOCALE}.UTF-8
 ENV DEBIAN_FRONTEND=dialog
 
 # Install pid1 init daemon
@@ -50,11 +57,12 @@ RUN curl -L https://github.com/fpco/pid1/releases/download/v${PID1_VERSION}/pid1
 ENTRYPOINT ["/usr/local/sbin/pid1"]
 CMD ["/bin/bash"]
 
-# Set workdir
-WORKDIR /root
+# Add user
+RUN useradd -m -s /bin/bash -d /home/debian -u 1000 -U debian
+USER debian
 
-# Create wireshark base image
-FROM base as wireshark-base
+# Set workdir
+WORKDIR /home/debian
 
 # Set Git related labels
 ARG SOURCE_GIT_REPOSITORY
@@ -66,16 +74,19 @@ LABEL source.git.repository=${SOURCE_GIT_REPOSITORY} \
 
 # Set tools related labels
 ARG DEBIAN_RELEASE
-ARG WIRESHARK_VERSION
-LABEL debian.release=${DEBIAN_RELEASE} \
-	  wireshark.version=${WIRESHARK_VERSION}
+LABEL debian.release=${DEBIAN_RELEASE}
 
 # Set Docker image version labes
-LABEL docker.image.version=${WIRESHARK_VERSION}-${DEBIAN_RELEASE}
+LABEL docker.image.version=${DEBIAN_RELEASE}
 
-# Create tshark image
-FROM wireshark-base as tshark
 
+## Create Tshark Image ##
+FROM net-tools as tshark
+
+# Switch to root user for installation
+USER root
+
+# Copy Tshark deb files
 ARG WIRESHARK_VERSION
 COPY --from=wireshark-build \
 	/root/libwsutil11_${WIRESHARK_VERSION}_amd64.deb \
@@ -104,9 +115,27 @@ RUN apt-get update \
 	&& rm -f /root/*.deb
 ENV DEBIAN_FRONTEND=dialog
 
-# Create wireshark image
+# Add permissions to run tshark as non root user
+RUN setcap 'CAP_NET_RAW+eip CAP_NET_ADMIN+eip' /usr/bin/dumpcap
+
+# Switch to non root user
+USER debian
+
+# Set tools related labels
+ARG WIRESHARK_VERSION
+LABEL wireshark.version=${WIRESHARK_VERSION}
+
+# Set Docker image version labes
+LABEL docker.image.version=${WIRESHARK_VERSION}-${DEBIAN_RELEASE}
+
+
+## Create wireshark image ##
 FROM tshark as wireshark
 
+# Switch to root user for installation
+USER root
+
+# Copy Wireshark deb files
 ARG WIRESHARK_VERSION
 COPY --from=wireshark-build \
 	/root/wireshark-qt_${WIRESHARK_VERSION}_amd64.deb \
@@ -124,3 +153,42 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
 	&& rm -f /root/*.deb
 ENV DEBIAN_FRONTEND=dialog
+
+# Install xpra
+RUN curl http://xpra.org/gpg.asc | apt-key add -
+ARG DEBIAN_RELEASE
+RUN echo "deb http://xpra.org/ ${DEBIAN_RELEASE} main" >> /etc/apt/sources.list.d/xpra.list;
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update \
+	&& apt-get install -y xpra xpra-html5 python3-xpra python3-uinput xauth websockify \
+    && apt-get autoremove -y \
+    && apt-get clean -y \
+    && rm -rf /var/lib/apt/lists/* \
+ENV DEBIAN_FRONTEND=dialog
+
+# copy xpra config file
+COPY ./xpra.conf /etc/xpra/xpra.conf
+
+# ensure that wireshark is using text mode for best display quality in HTML5 client
+RUN echo -e "\nclass-instance:wireshark=text" >> /usr/share/xpra/content-type/50_class.conf
+
+# create run directory for xpra socket and set correct permissions
+RUN mkdir -p /run/user/$(id -u debian)/xpra
+RUN chown -R debian:debian /run/user/$(id -u debian)
+
+# allow wireshark user to read default certificate
+RUN chmod 644 /etc/xpra/ssl-cert.pem
+
+# Switch to non root user
+RUN usermod -a -G xpra debian
+USER debian
+
+# set default password to access wireshark via xpra
+ENV XPRA_PW wireshark
+
+# expose xpra default port
+EXPOSE 14500
+
+# run xpra, options --daemon and --no-printing only work if specified as parameters to xpra start
+CMD ["/usr/bin/xpra","start","--daemon=no"]

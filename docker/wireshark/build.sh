@@ -31,6 +31,14 @@ function build () {
         --build-arg WIRESHARK_VERSION=${WIRESHARK_VERSION} \
         ${SCRIPT_DIR}
 
+    docker build --target net-tools \
+        -t "${DOCKERREGISTRY_USER}/net-tools:${DEBIAN_RELEASE}" \
+        --build-arg DEBIAN_RELEASE=${DEBIAN_RELEASE} \
+        --build-arg SOURCE_GIT_REPOSITORY=${GIT_REPO_URL} \
+        --build-arg SOURCE_GIT_COMMIT=${commit} \
+        --build-arg README_URL=${readmeUrl} \
+        ${SCRIPT_DIR}
+
     docker build --target tshark \
         -t "${DOCKERREGISTRY_USER}/tshark:${WIRESHARK_VERSION}-${DEBIAN_RELEASE}" \
         --build-arg DEBIAN_RELEASE=${DEBIAN_RELEASE} \
