@@ -38,7 +38,8 @@ RUN apt-get update \
 	&& apt-get install gnupg apt-utils ca-certificates locales -y \
 	&& apt-get update \
 	&& apt-get upgrade -y \
-	&& apt-get -y install procps vim neovim less expect jq net-tools iproute2 iputils-ping iputils-tracepath iputils-arping telnet dnsutils netcat tcpdump curl wget httpie \
+	&& apt-get -y install procps vim neovim less expect jq net-tools iproute2 nftables iputils-ping iputils-tracepath iputils-arping \
+		telnet dnsutils netcat socat tcpdump curl wget httpie \
     && apt-get autoremove -y \
     && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/*
@@ -48,9 +49,6 @@ RUN sed -i -e "s/# *${LOCALE}.UTF-8 UTF-8/${LOCALE}.UTF-8 UTF-8/" /etc/locale.ge
     update-locale LANG=${LOCALE}.UTF-8
 ENV LANG ${LOCALE}.UTF-8
 ENV DEBIAN_FRONTEND=dialog
-
-# Add permissions to run tshark as non root user
-RUN setcap 'CAP_NET_RAW+eip CAP_NET_ADMIN+eip' /usr/sbin/tcpdump
 
 # Install pid1 init daemon
 ARG PID1_VERSION=0.1.2.0
@@ -62,6 +60,11 @@ ENV ENTRYPOINT_EXEC_CMD /usr/local/sbin/pid1
 ENTRYPOINT ["/entrypoint.sh"]
 ENV ENTRYPOINT_DEFAULT_CMD /bin/bash
 CMD ["/bin/bash"]
+
+# Add permissions to run network tools as non root user
+RUN setcap 'CAP_NET_RAW+eip CAP_NET_ADMIN+eip' /usr/sbin/tcpdump
+RUN setcap 'CAP_NET_RAW+eip CAP_NET_ADMIN+eip' /usr/sbin/nft
+RUN setcap 'CAP_NET_RAW+eip CAP_NET_ADMIN+eip' /sbin/tc
 
 # Add user
 RUN useradd -m -s /bin/bash -d /home/debian -u 1000 -U debian
