@@ -49,6 +49,9 @@ RUN sed -i -e "s/# *${LOCALE}.UTF-8 UTF-8/${LOCALE}.UTF-8 UTF-8/" /etc/locale.ge
 ENV LANG ${LOCALE}.UTF-8
 ENV DEBIAN_FRONTEND=dialog
 
+# Add permissions to run tshark as non root user
+RUN setcap 'CAP_NET_RAW+eip CAP_NET_ADMIN+eip' /usr/sbin/tcpdump
+
 # Install pid1 init daemon
 ARG PID1_VERSION=0.1.2.0
 RUN curl -L https://github.com/fpco/pid1/releases/download/v${PID1_VERSION}/pid1-${PID1_VERSION}-linux-x86_64.tar.gz | tar xz -C /usr/local
