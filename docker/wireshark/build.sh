@@ -3,8 +3,6 @@ set -e
 pushd . > /dev/null
 cd $(dirname ${BASH_SOURCE[0]})
 SCRIPT_DIR=$(pwd)
-GIT_REPO_URL=$(git config --get remote.origin.url | sed 's/:/\//' | sed 's/\.git//' | sed 's/git@/https\:\/\//')
-GIT_ROOT_DIR=$(git rev-parse --show-toplevel)
 popd > /dev/null
 
 PUSH=false
@@ -22,10 +20,7 @@ function usage () {
     return 1
 }
 
-function build () {
-    local commit=$(resolveCommit)
-    local readmeUrl=${GIT_REPO_URL}/blob/${commit}/$(realpath --relative-to=${GIT_ROOT_DIR} ${SCRIPT_DIR}/README.adoc)
-    
+function build () {  
     docker build --target wireshark-build \
         -t "${DOCKERREGISTRY_USER}/wireshark-dev:${WIRESHARK_VERSION}-${DEBIAN_RELEASE}" \
         --build-arg DEBIAN_RELEASE=${DEBIAN_RELEASE} \
@@ -35,9 +30,6 @@ function build () {
     docker build --target net-tools \
         -t "${DOCKERREGISTRY_USER}/net-tools:${DEBIAN_RELEASE}" \
         --build-arg DEBIAN_RELEASE=${DEBIAN_RELEASE} \
-        --build-arg SOURCE_GIT_REPOSITORY=${GIT_REPO_URL} \
-        --build-arg SOURCE_GIT_COMMIT=${commit} \
-        --build-arg README_URL=${readmeUrl} \
         ${SCRIPT_DIR}
     docker tag "${DOCKERREGISTRY_USER}/net-tools:${DEBIAN_RELEASE}" "${DOCKERREGISTRY_USER}/net-tools:${DEBIAN_RELEASE}-$(resolveBuildTimestamp ${DOCKERREGISTRY_USER}/net-tools:${DEBIAN_RELEASE})"
     docker tag "${DOCKERREGISTRY_USER}/net-tools:${DEBIAN_RELEASE}" "${DOCKERREGISTRY_USER}/net-tools:latest"
@@ -46,9 +38,6 @@ function build () {
         -t "${DOCKERREGISTRY_USER}/tshark:${WIRESHARK_VERSION}-${DEBIAN_RELEASE}" \
         --build-arg DEBIAN_RELEASE=${DEBIAN_RELEASE} \
         --build-arg WIRESHARK_VERSION=${WIRESHARK_VERSION} \
-        --build-arg SOURCE_GIT_REPOSITORY=${GIT_REPO_URL} \
-        --build-arg SOURCE_GIT_COMMIT=${commit} \
-        --build-arg README_URL=${readmeUrl} \
         ${SCRIPT_DIR}
     docker tag "${DOCKERREGISTRY_USER}/tshark:${WIRESHARK_VERSION}-${DEBIAN_RELEASE}" "${DOCKERREGISTRY_USER}/tshark:${WIRESHARK_VERSION}-${DEBIAN_RELEASE}-$(resolveBuildTimestamp ${DOCKERREGISTRY_USER}/tshark:${WIRESHARK_VERSION}-${DEBIAN_RELEASE})"
     docker tag "${DOCKERREGISTRY_USER}/tshark:${WIRESHARK_VERSION}-${DEBIAN_RELEASE}" "${DOCKERREGISTRY_USER}/tshark:${WIRESHARK_VERSION}"
@@ -59,9 +48,6 @@ function build () {
         --build-arg DEBIAN_RELEASE=${DEBIAN_RELEASE} \
         --build-arg WIRESHARK_VERSION=${WIRESHARK_VERSION} \
         --build-arg TERMSHARK_VERSION=${TERMSHARK_VERSION} \
-        --build-arg SOURCE_GIT_REPOSITORY=${GIT_REPO_URL} \
-        --build-arg SOURCE_GIT_COMMIT=${commit} \
-        --build-arg README_URL=${readmeUrl} \
         ${SCRIPT_DIR}
     docker tag "${DOCKERREGISTRY_USER}/tshark-termshark:${WIRESHARK_VERSION}-${TERMSHARK_VERSION}-${DEBIAN_RELEASE}" "${DOCKERREGISTRY_USER}/tshark-termshark:${WIRESHARK_VERSION}-${TERMSHARK_VERSION}-${DEBIAN_RELEASE}-$(resolveBuildTimestamp ${DOCKERREGISTRY_USER}/tshark-termshark:${WIRESHARK_VERSION}-${TERMSHARK_VERSION}-${DEBIAN_RELEASE})"
     docker tag "${DOCKERREGISTRY_USER}/tshark-termshark:${WIRESHARK_VERSION}-${TERMSHARK_VERSION}-${DEBIAN_RELEASE}" "${DOCKERREGISTRY_USER}/tshark-termshark:${WIRESHARK_VERSION}-${TERMSHARK_VERSION}"
@@ -72,9 +58,6 @@ function build () {
         -t "${DOCKERREGISTRY_USER}/wireshark:${WIRESHARK_VERSION}-${DEBIAN_RELEASE}" \
         --build-arg DEBIAN_RELEASE=${DEBIAN_RELEASE} \
         --build-arg WIRESHARK_VERSION=${WIRESHARK_VERSION} \
-        --build-arg SOURCE_GIT_REPOSITORY=${GIT_REPO_URL} \
-        --build-arg SOURCE_GIT_COMMIT=${commit} \
-        --build-arg README_URL=${readmeUrl} \
         ${SCRIPT_DIR}
     docker tag "${DOCKERREGISTRY_USER}/wireshark:${WIRESHARK_VERSION}-${DEBIAN_RELEASE}" "${DOCKERREGISTRY_USER}/wireshark:${WIRESHARK_VERSION}-${DEBIAN_RELEASE}-$(resolveBuildTimestamp ${DOCKERREGISTRY_USER}/wireshark:${WIRESHARK_VERSION}-${DEBIAN_RELEASE})"
     docker tag "${DOCKERREGISTRY_USER}/wireshark:${WIRESHARK_VERSION}-${DEBIAN_RELEASE}" "${DOCKERREGISTRY_USER}/wireshark:${WIRESHARK_VERSION}"
@@ -101,13 +84,6 @@ function push () {
     docker push "${DOCKERREGISTRY_USER}/wireshark:${WIRESHARK_VERSION}-${DEBIAN_RELEASE}"
     docker push "${DOCKERREGISTRY_USER}/wireshark:${WIRESHARK_VERSION}"
     docker push "${DOCKERREGISTRY_USER}/wireshark:latest"
-}
-
-function resolveCommit () {
-    pushd . > /dev/null
-    cd $SCRIPT_DIR
-    git rev-list --abbrev-commit --abbrev=7 -1 master
-    popd > /dev/null
 }
 
 function resolveBuildTimestamp() {

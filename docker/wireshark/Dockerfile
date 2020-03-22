@@ -38,7 +38,7 @@ RUN apt-get update \
 	&& apt-get install gnupg apt-utils ca-certificates locales -y \
 	&& apt-get update \
 	&& apt-get upgrade -y \
-	&& apt-get -y install procps vim neovim less expect jq net-tools iproute2 iputils-ping iputils-tracepath iputils-arping telnet dnsutils netcat curl wget httpie \
+	&& apt-get -y install procps vim neovim less expect jq net-tools iproute2 iputils-ping iputils-tracepath iputils-arping telnet dnsutils netcat tcpdump curl wget httpie \
     && apt-get autoremove -y \
     && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/*
@@ -66,14 +66,6 @@ USER debian
 
 # Set workdir
 WORKDIR /home/debian
-
-# Set Git related labels
-ARG SOURCE_GIT_REPOSITORY
-ARG SOURCE_GIT_COMMIT
-ARG README_URL
-LABEL source.git.repository=${SOURCE_GIT_REPOSITORY} \
-      source.git.commit=${SOURCE_GIT_COMMIT} \
-      readme.url=${README_URL}
 
 # Set tools related labels
 ARG DEBIAN_RELEASE
