@@ -39,6 +39,8 @@ function build () {
         --build-arg SOURCE_GIT_COMMIT=${commit} \
         --build-arg README_URL=${readmeUrl} \
         ${SCRIPT_DIR}
+    docker tag "${DOCKERREGISTRY_USER}/net-tools:${DEBIAN_RELEASE}" "${DOCKERREGISTRY_USER}/net-tools:${DEBIAN_RELEASE}-$(resolveBuildTimestamp ${DOCKERREGISTRY_USER}/net-tools:${DEBIAN_RELEASE})"
+    docker tag "${DOCKERREGISTRY_USER}/net-tools:${DEBIAN_RELEASE}" "${DOCKERREGISTRY_USER}/net-tools:latest"
 
     docker build --target tshark \
         -t "${DOCKERREGISTRY_USER}/tshark:${WIRESHARK_VERSION}-${DEBIAN_RELEASE}" \
@@ -80,10 +82,20 @@ function build () {
 }
 
 function push () {
+    docker push "${DOCKERREGISTRY_USER}/net-tools:${DEBIAN_RELEASE}-$(resolveBuildTimestamp ${DOCKERREGISTRY_USER}/net-tools:${DEBIAN_RELEASE})"
+    docker push "${DOCKERREGISTRY_USER}/net-tools:${DEBIAN_RELEASE}"
+    docker push "${DOCKERREGISTRY_USER}/net-tools:latest"
+
     docker push "${DOCKERREGISTRY_USER}/tshark:${WIRESHARK_VERSION}-${DEBIAN_RELEASE}-$(resolveBuildTimestamp ${DOCKERREGISTRY_USER}/tshark:${WIRESHARK_VERSION}-${DEBIAN_RELEASE})"
     docker push "${DOCKERREGISTRY_USER}/tshark:${WIRESHARK_VERSION}-${DEBIAN_RELEASE}"
     docker push "${DOCKERREGISTRY_USER}/tshark:${WIRESHARK_VERSION}"
     docker push "${DOCKERREGISTRY_USER}/tshark:latest"
+
+    docker push "${DOCKERREGISTRY_USER}/tshark-termshark:${WIRESHARK_VERSION}-${TERMSHARK_VERSION}-${DEBIAN_RELEASE}-$(resolveBuildTimestamp ${DOCKERREGISTRY_USER}/tshark-termshark:${WIRESHARK_VERSION}-${TERMSHARK_VERSION}-${DEBIAN_RELEASE})"
+    docker push "${DOCKERREGISTRY_USER}/tshark-termshark:${WIRESHARK_VERSION}-${TERMSHARK_VERSION}-${DEBIAN_RELEASE}" 
+    docker push "${DOCKERREGISTRY_USER}/tshark-termshark:${WIRESHARK_VERSION}-${TERMSHARK_VERSION}"
+    docker push "${DOCKERREGISTRY_USER}/tshark-termshark:${WIRESHARK_VERSION}"
+    docker push "${DOCKERREGISTRY_USER}/tshark-termshark:latest"
 
     docker push "${DOCKERREGISTRY_USER}/wireshark:${WIRESHARK_VERSION}-${DEBIAN_RELEASE}-$(resolveBuildTimestamp ${DOCKERREGISTRY_USER}/wireshark:${WIRESHARK_VERSION}-${DEBIAN_RELEASE})"
     docker push "${DOCKERREGISTRY_USER}/wireshark:${WIRESHARK_VERSION}-${DEBIAN_RELEASE}"
