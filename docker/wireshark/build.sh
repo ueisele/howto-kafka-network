@@ -12,6 +12,7 @@ BUILD=false
 DOCKERREGISTRY_USER="ueisele"
 DEBIAN_RELEASE="bullseye"
 WIRESHARK_VERSION="3.2.2"
+TERMSHARK_VERSION="2.1.1"
 
 function usage () {
     echo "$0: $1" >&2
@@ -51,6 +52,20 @@ function build () {
     docker tag "${DOCKERREGISTRY_USER}/tshark:${WIRESHARK_VERSION}-${DEBIAN_RELEASE}" "${DOCKERREGISTRY_USER}/tshark:${WIRESHARK_VERSION}"
     docker tag "${DOCKERREGISTRY_USER}/tshark:${WIRESHARK_VERSION}-${DEBIAN_RELEASE}" "${DOCKERREGISTRY_USER}/tshark:latest"
 
+    docker build --target termshark \
+        -t "${DOCKERREGISTRY_USER}/tshark-termshark:${WIRESHARK_VERSION}-${TERMSHARK_VERSION}-${DEBIAN_RELEASE}" \
+        --build-arg DEBIAN_RELEASE=${DEBIAN_RELEASE} \
+        --build-arg WIRESHARK_VERSION=${WIRESHARK_VERSION} \
+        --build-arg TERMSHARK_VERSION=${TERMSHARK_VERSION} \
+        --build-arg SOURCE_GIT_REPOSITORY=${GIT_REPO_URL} \
+        --build-arg SOURCE_GIT_COMMIT=${commit} \
+        --build-arg README_URL=${readmeUrl} \
+        ${SCRIPT_DIR}
+    docker tag "${DOCKERREGISTRY_USER}/tshark-termshark:${WIRESHARK_VERSION}-${TERMSHARK_VERSION}-${DEBIAN_RELEASE}" "${DOCKERREGISTRY_USER}/tshark-termshark:${WIRESHARK_VERSION}-${TERMSHARK_VERSION}-${DEBIAN_RELEASE}-$(resolveBuildTimestamp ${DOCKERREGISTRY_USER}/tshark-termshark:${WIRESHARK_VERSION}-${TERMSHARK_VERSION}-${DEBIAN_RELEASE})"
+    docker tag "${DOCKERREGISTRY_USER}/tshark-termshark:${WIRESHARK_VERSION}-${TERMSHARK_VERSION}-${DEBIAN_RELEASE}" "${DOCKERREGISTRY_USER}/tshark-termshark:${WIRESHARK_VERSION}-${TERMSHARK_VERSION}"
+    docker tag "${DOCKERREGISTRY_USER}/tshark-termshark:${WIRESHARK_VERSION}-${TERMSHARK_VERSION}-${DEBIAN_RELEASE}" "${DOCKERREGISTRY_USER}/tshark-termshark:${WIRESHARK_VERSION}"
+    docker tag "${DOCKERREGISTRY_USER}/tshark-termshark:${WIRESHARK_VERSION}-${TERMSHARK_VERSION}-${DEBIAN_RELEASE}" "${DOCKERREGISTRY_USER}/tshark-termshark:latest"
+
     docker build --target wireshark \
         -t "${DOCKERREGISTRY_USER}/wireshark:${WIRESHARK_VERSION}-${DEBIAN_RELEASE}" \
         --build-arg DEBIAN_RELEASE=${DEBIAN_RELEASE} \
@@ -59,7 +74,7 @@ function build () {
         --build-arg SOURCE_GIT_COMMIT=${commit} \
         --build-arg README_URL=${readmeUrl} \
         ${SCRIPT_DIR}
-    docker tag "${DOCKERREGISTRY_USER}/wireshark:${WIRESHARK_VERSION}-${DEBIAN_RELEASE}" "${DOCKERREGISTRY_USER}/wireshark:${WIRESHARK_VERSION}-${DEBIAN_RELEASE}-$(resolveBuildTimestamp ${DOCKERREGISTRY_USER}/tshark:${WIRESHARK_VERSION}-${DEBIAN_RELEASE})"
+    docker tag "${DOCKERREGISTRY_USER}/wireshark:${WIRESHARK_VERSION}-${DEBIAN_RELEASE}" "${DOCKERREGISTRY_USER}/wireshark:${WIRESHARK_VERSION}-${DEBIAN_RELEASE}-$(resolveBuildTimestamp ${DOCKERREGISTRY_USER}/wireshark:${WIRESHARK_VERSION}-${DEBIAN_RELEASE})"
     docker tag "${DOCKERREGISTRY_USER}/wireshark:${WIRESHARK_VERSION}-${DEBIAN_RELEASE}" "${DOCKERREGISTRY_USER}/wireshark:${WIRESHARK_VERSION}"
     docker tag "${DOCKERREGISTRY_USER}/wireshark:${WIRESHARK_VERSION}-${DEBIAN_RELEASE}" "${DOCKERREGISTRY_USER}/wireshark:latest"
 }
@@ -84,7 +99,7 @@ function resolveCommit () {
 }
 
 function resolveBuildTimestamp() {
-    local imageName=${1:-"Missing image name as first parameter!"}
+    local imageName=${1:?"Missing image name as first parameter!"}
     local created=$(docker inspect --format "{{ index .Created }}" "${imageName}")
     date --utc -d "${created}" +'%Y%m%dT%H%M%Z'
 }

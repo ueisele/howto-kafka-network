@@ -54,7 +54,10 @@ ARG PID1_VERSION=0.1.2.0
 RUN curl -L https://github.com/fpco/pid1/releases/download/v${PID1_VERSION}/pid1-${PID1_VERSION}-linux-x86_64.tar.gz | tar xz -C /usr/local
 
 # Set up pid1 entrypoint and default command
-ENTRYPOINT ["/usr/local/sbin/pid1"]
+COPY entrypoint.sh /entrypoint.sh
+ENV ENTRYPOINT_EXEC_CMD /usr/local/sbin/pid1
+ENTRYPOINT ["/entrypoint.sh"]
+ENV ENTRYPOINT_DEFAULT_CMD /bin/bash
 CMD ["/bin/bash"]
 
 # Add user
@@ -76,9 +79,6 @@ LABEL source.git.repository=${SOURCE_GIT_REPOSITORY} \
 ARG DEBIAN_RELEASE
 LABEL debian.release=${DEBIAN_RELEASE}
 
-# Set Docker image version labes
-LABEL docker.image.version=${DEBIAN_RELEASE}
-
 
 ## Create Tshark Image ##
 FROM net-tools as tshark
@@ -97,7 +97,7 @@ COPY --from=wireshark-build \
 	/root/tshark_${WIRESHARK_VERSION}_amd64.deb \
 	/root/
 
-# Install tshark
+# Install TShark
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
 	&& apt-get install -y libglib2.0-0 libpcap0.8 \
@@ -125,8 +125,28 @@ USER debian
 ARG WIRESHARK_VERSION
 LABEL wireshark.version=${WIRESHARK_VERSION}
 
-# Set Docker image version labes
-LABEL docker.image.version=${WIRESHARK_VERSION}-${DEBIAN_RELEASE}
+# Set default cmd
+ENV ENTRYPOINT_DEFAULT_CMD /usr/bin/tshark
+CMD ["/usr/bin/tshark"]
+
+
+## Create Termshark image ##
+FROM tshark as termshark
+
+# Switch to root user for installation
+USER root
+
+# Install Termshark
+ARG TERMSHARK_VERSION=2.1.1
+RUN curl -L https://github.com/gcla/termshark/releases/download/v${TERMSHARK_VERSION}/termshark_${TERMSHARK_VERSION}_linux_x64.tar.gz | tar -xz --strip-components=1 -C /usr/bin
+LABEL termshark.version=${TERMSHARK_VERSION}
+
+# Switch to non root user
+USER debian
+
+# Set default cmd
+ENV ENTRYPOINT_DEFAULT_CMD /usr/bin/termshark
+CMD ["/usr/bin/termshark"]
 
 
 ## Create wireshark image ##
@@ -142,7 +162,7 @@ COPY --from=wireshark-build \
 	/root/wireshark_${WIRESHARK_VERSION}_amd64.deb \
 	/root/
 
-# Install wireshark
+# Install Wireshark
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
 	&& apt-get install -y libminizip1 libnl-route-3-200 libqt5core5a libqt5gui5 libqt5multimedia5 libqt5printsupport5 libqt5widgets5 libspeexdsp1 \
@@ -191,4 +211,5 @@ ENV XPRA_PW wireshark
 EXPOSE 14500
 
 # run xpra, options --daemon and --no-printing only work if specified as parameters to xpra start
+ENV ENTRYPOINT_DEFAULT_CMD "/usr/bin/xpra start --daemon=no"
 CMD ["/usr/bin/xpra","start","--daemon=no"]
