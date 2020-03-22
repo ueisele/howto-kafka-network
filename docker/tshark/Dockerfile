@@ -5,7 +5,7 @@ RUN apt-get update \
     # Install tools
     && apt-get -y install --no-install-recommends \
         curl wget netcat httpie telnet dnsutils net-tools ca-certificates procps vim less expect jq \
-        tshark \
+    && apt-get install tshark \
     # Clean up
     && apt-get autoremove -y \
     && apt-get clean -y \
