@@ -9,6 +9,95 @@ networks:
 
 services:
 
+  # Schema-Registry
+  schemaregistry1:
+    image: confluentinc/cp-schema-registry:${VERSION_CONFLUENT}
+    restart: unless-stopped
+    hostname: schemaregistry1
+    depends_on:
+      - kafka1
+      - kafka2
+      - kafka3  
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schemaregistry1.${DOMAIN_INTERN} # The advertised host name. 
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081 # (default: http://0.0.0.0:8081) Comma-separated list of listeners that listen for API requests
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka.${DOMAIN_INTERN}:9092 # A list of Kafka brokers to connect. If kafkastore.connection.url is not specified, the Kafka cluster containing these bootstrap servers is used both to coordinate Schema Registry instances (primary election) and to store schema data.
+      SCHEMA_REGISTRY_MASTER_ELIGIBILITY: "true" # (default: true) If true, this node can participate in primary election.
+      SCHEMA_REGISTRY_AVRO_COMPATIBILITY_LEVEL: full_transitive # (default: backward) The Avro compatibility type
+    networks:
+      kafka:
+        aliases:
+          - schemaregistry.${DOMAIN_INTERN}
+          - schemaregistry1.${DOMAIN_INTERN}
+
+  schemaregistry2:
+    image: confluentinc/cp-schema-registry:${VERSION_CONFLUENT}
+    restart: unless-stopped
+    hostname: schemaregistry2
+    depends_on:
+      - kafka1
+      - kafka2
+      - kafka3  
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schemaregistry2.${DOMAIN_INTERN} # The advertised host name. 
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081 # (default: http://0.0.0.0:8081) Comma-separated list of listeners that listen for API requests
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka.${DOMAIN_INTERN}:9092 # A list of Kafka brokers to connect. If kafkastore.connection.url is not specified, the Kafka cluster containing these bootstrap servers is used both to coordinate Schema Registry instances (primary election) and to store schema data.
+      SCHEMA_REGISTRY_MASTER_ELIGIBILITY: "true" # (default: true) If true, this node can participate in primary election.
+      SCHEMA_REGISTRY_AVRO_COMPATIBILITY_LEVEL: full_transitive # (default: backward) The Avro compatibility type
+    networks:
+      kafka:
+        aliases:
+          - schemaregistry.${DOMAIN_INTERN}
+          - schemaregistry1.${DOMAIN_INTERN}
+  
+  # Kafka Rest Proxy
+  restproxy1:
+    image: confluentinc/cp-kafka-rest:${VERSION_CONFLUENT}
+    restart: unless-stopped
+    hostname: restproxy1
+    depends_on:
+      - zookeeper
+      - kafka1
+      - kafka2
+      - kafka3
+      - schemaregistry1
+      - shcemaregistry2
+    environment:
+      KAFKA_REST_HOST_NAME: restproxy1.${DOMAIN_INTERN}
+      KAFKA_REST_BOOTSTRAP_SERVERS: 'kafka.${DOMAIN_INTERN}:9092'
+      KAFKA_REST_LISTENERS: "http://0.0.0.0:8082"
+      KAFKA_REST_SCHEMA_REGISTRY_URL: 'http://schemaregistry.${DOMAIN_INTERN}:8081'
+    networks:
+      kafka:
+        aliases:
+          - restproxy.${DOMAIN_INTERN}
+          - restproxy1.${DOMAIN_INTERN}
+
+  restproxy2:
+    image: confluentinc/cp-kafka-rest:${VERSION_CONFLUENT}
+    restart: unless-stopped
+    hostname: restproxy2
+    depends_on:
+      - zookeeper
+      - kafka1
+      - kafka2
+      - kafka3
+      - schemaregistry1
+      - shcemaregistry2
+    environment:
+      KAFKA_REST_HOST_NAME: restproxy2.${DOMAIN_INTERN}
+      KAFKA_REST_ID: "2"
+      KAFKA_REST_ZOOKEEPER_CONNECT: zookeeper1.${DOMAIN_INTERN}:2181,zookeeper2.${DOMAIN_INTERN}:2181,zookeeper3.${DOMAIN_INTERN}:2181
+      KAFKA_REST_BOOTSTRAP_SERVERS: 'kafka.${DOMAIN_INTERN}:9092'
+      KAFKA_REST_LISTENERS: "http://0.0.0.0:8082"
+      KAFKA_REST_SCHEMA_REGISTRY_URL: 'http://schemaregistry.${DOMAIN_INTERN}:8081'
+      KAFKA_REST_CONSUMER_THREADS: "50"
+    networks:
+      kafka:
+        aliases:
+          - restproxy.${DOMAIN_INTERN}
+          - restproxy2.${DOMAIN_INTERN}
+
   # Kafka
   kafka1:
     image: confluentinc/cp-kafka:${VERSION_CONFLUENT}

@@ -39,7 +39,7 @@ RUN apt-get update \
 	&& apt-get update \
 	&& apt-get upgrade -y \
 	&& apt-get -y install procps vim neovim less expect jq net-tools iproute2 nftables iputils-ping iputils-tracepath iputils-arping \
-		telnet dnsutils netcat socat tcpdump curl wget httpie \
+		telnet dnsutils netcat socat tcpdump hping3 curl wget httpie \
     && apt-get autoremove -y \
     && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/*
@@ -173,20 +173,38 @@ RUN apt-get update \
 ENV DEBIAN_FRONTEND=dialog
 
 # Install xpra
-RUN curl http://xpra.org/gpg.asc | apt-key add -
-ARG DEBIAN_RELEASE
-RUN echo "deb http://xpra.org/ ${DEBIAN_RELEASE} main" >> /etc/apt/sources.list.d/xpra.list;
-
+ARG XPRA_VERSION=3.0.7
+LABEL xpra.version=${XPRA_VERSION}
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
-	&& apt-get install -y xpra xpra-html5 python3-xpra python3-uinput xauth websockify \
+	&& apt-get install -y xpra=${XPRA_VERSION}* python3-netifaces xauth websockify uglifyjs.terser \
     && apt-get autoremove -y \
     && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/* \
 ENV DEBIAN_FRONTEND=dialog
 
+# install xpra-html5
+RUN mkdir -p /tmp/xpra \
+	&& (curl -L https://xpra.org/src/xpra-html5-${XPRA_VERSION}.tar.xz | tar -xJ --strip-components=1 -C /tmp/xpra) \
+	&& sed -i "s/python/python3/" /tmp/xpra/setup_html5.py \
+	&& sed -i "s/uglifyjs/uglifyjs.terser/" /tmp/xpra/setup_html5.py \
+	&& sed -i "s/\"--screw-ie8\",//" /tmp/xpra/setup_html5.py \
+	&& cd /tmp/xpra/ \
+	&& ./setup_html5.py \
+	&& cd / \
+	&& rm -rf /tmp/xpra
+
 # copy xpra config file
 COPY ./xpra.conf /etc/xpra/xpra.conf
+
+# create default certificate and allow wireshark user to read it
+RUN openssl req -new -x509 -days 3650 -nodes -newkey RSA:2048 -sha256 \
+		-subj "/C=DE/ST=Hessen/L=Frankfurt/O=Wireshark/OU=Wireshark/CN=localhost:14500" \
+		-out /etc/xpra/cert.pem -keyout /etc/xpra/key.pem \
+	&& cat /etc/xpra/key.pem /etc/xpra/cert.pem > /etc/xpra/ssl-cert.pem \
+	&& chmod 644 /etc/xpra/ssl-cert.pem \
+	&& rm /etc/xpra/cert.pem \
+	&& rm /etc/xpra/key.pem
 
 # ensure that wireshark is using text mode for best display quality in HTML5 client
 RUN echo -e "\nclass-instance:wireshark=text" >> /usr/share/xpra/content-type/50_class.conf
@@ -194,9 +212,6 @@ RUN echo -e "\nclass-instance:wireshark=text" >> /usr/share/xpra/content-type/50
 # create run directory for xpra socket and set correct permissions
 RUN mkdir -p /run/user/$(id -u debian)/xpra
 RUN chown -R debian:debian /run/user/$(id -u debian)
-
-# allow wireshark user to read default certificate
-RUN chmod 644 /etc/xpra/ssl-cert.pem
 
 # Switch to non root user
 RUN usermod -a -G xpra debian
@@ -211,3 +226,5 @@ EXPOSE 14500
 # run xpra, options --daemon and --no-printing only work if specified as parameters to xpra start
 ENV ENTRYPOINT_DEFAULT_CMD "/usr/bin/xpra start --daemon=no"
 CMD ["/usr/bin/xpra","start","--daemon=no"]
+
+
