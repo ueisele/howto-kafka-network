@@ -65,6 +65,7 @@ CMD ["/bin/bash"]
 RUN setcap 'CAP_NET_RAW+eip CAP_NET_ADMIN+eip' /usr/sbin/tcpdump
 RUN setcap 'CAP_NET_RAW+eip CAP_NET_ADMIN+eip' /usr/sbin/nft
 RUN setcap 'CAP_NET_RAW+eip CAP_NET_ADMIN+eip' /sbin/tc
+RUN setcap 'CAP_NET_RAW+eip CAP_NET_ADMIN+eip' /usr/sbin/hping3
 
 # Add user
 RUN useradd -m -s /bin/bash -d /home/debian -u 1000 -U debian
@@ -183,6 +184,21 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
 ENV DEBIAN_FRONTEND=dialog
 
+# copy xpra config file
+COPY ./xpra.conf /etc/xpra/xpra.conf
+
+# create default certificate and allow wireshark user to read it
+RUN openssl req -new -x509 -days 3650 -nodes -newkey RSA:2048 -sha256 \
+		-subj "/C=DE/ST=Hessen/L=Frankfurt/O=Wireshark/OU=Wireshark/CN=localhost" \
+		-out /etc/xpra/cert.pem -keyout /etc/xpra/key.pem \
+	&& cat /etc/xpra/key.pem /etc/xpra/cert.pem > /etc/xpra/ssl-cert.pem \
+	&& chmod 644 /etc/xpra/ssl-cert.pem \
+	&& rm /etc/xpra/cert.pem \
+	&& rm /etc/xpra/key.pem
+
+# ensure that wireshark is using text mode for best display quality in HTML5 client
+RUN echo -e "\nclass-instance:wireshark=text" >> /usr/share/xpra/content-type/50_class.conf
+
 # install xpra-html5
 RUN mkdir -p /tmp/xpra \
 	&& (curl -L https://xpra.org/src/xpra-html5-${XPRA_VERSION}.tar.xz | tar -xJ --strip-components=1 -C /tmp/xpra) \
@@ -193,22 +209,7 @@ RUN mkdir -p /tmp/xpra \
 	&& ./setup_html5.py \
 	&& cd / \
 	&& rm -rf /tmp/xpra
-
-# copy xpra config file
-COPY ./xpra.conf /etc/xpra/xpra.conf
-
-# create default certificate and allow wireshark user to read it
-RUN openssl req -new -x509 -days 3650 -nodes -newkey RSA:2048 -sha256 \
-		-subj "/C=DE/ST=Hessen/L=Frankfurt/O=Wireshark/OU=Wireshark/CN=localhost:14500" \
-		-out /etc/xpra/cert.pem -keyout /etc/xpra/key.pem \
-	&& cat /etc/xpra/key.pem /etc/xpra/cert.pem > /etc/xpra/ssl-cert.pem \
-	&& chmod 644 /etc/xpra/ssl-cert.pem \
-	&& rm /etc/xpra/cert.pem \
-	&& rm /etc/xpra/key.pem
-
-# ensure that wireshark is using text mode for best display quality in HTML5 client
-RUN echo -e "\nclass-instance:wireshark=text" >> /usr/share/xpra/content-type/50_class.conf
-
+	
 # create run directory for xpra socket and set correct permissions
 RUN mkdir -p /run/user/$(id -u debian)/xpra
 RUN chown -R debian:debian /run/user/$(id -u debian)
