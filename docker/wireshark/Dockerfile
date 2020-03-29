@@ -1,5 +1,6 @@
 ARG DEBIAN_RELEASE=bullseye
 ARG WIRESHARK_VERSION=3.2.2
+ARG WIRESHARK_BRANCH=wireshark-${WIRESHARK_VERSION}
 
 ## Build Wireshark ##
 FROM debian:${DEBIAN_RELEASE} as wireshark-build
@@ -20,13 +21,14 @@ RUN apt-get update \
 ENV DEBIAN_FRONTEND=dialog
 
 RUN cd /root && git clone https://github.com/wireshark/wireshark.git
-ARG WIRESHARK_VERSION
+ARG WIRESHARK_BRANCH
 RUN cd /root/wireshark \
 	&& git pull \
-	&& git checkout wireshark-${WIRESHARK_VERSION}
+	&& git checkout ${WIRESHARK_BRANCH}
 RUN cd /root/wireshark \
 	&& dpkg-buildpackage -us -uc -rfakeroot \
 	&& git clean -Xdf
+RUN find /root/ -maxdepth 1 -type f -regextype posix-egrep -regex "^.*-(dev|dbg|doc)_[0-9_.]+_(amd64|all)\.deb$" -delete
 
 
 ## Create Base Image ##
@@ -85,33 +87,21 @@ FROM net-tools as tshark
 # Switch to root user for installation
 USER root
 
+# Copy install script
+COPY install-deb.sh /root/
+
 # Copy Tshark deb files
-ARG WIRESHARK_VERSION
-COPY --from=wireshark-build \
-	/root/libwsutil11_${WIRESHARK_VERSION}_amd64.deb \
-	/root/libwiretap10_${WIRESHARK_VERSION}_amd64.deb \
-	/root/libwireshark-data_${WIRESHARK_VERSION}_all.deb \
-	/root/libwireshark13_${WIRESHARK_VERSION}_amd64.deb \
-	/root/wireshark-common_${WIRESHARK_VERSION}_amd64.deb \
-	/root/tshark_${WIRESHARK_VERSION}_amd64.deb \
-	/root/
+COPY --from=wireshark-build /root/*.deb /root/wireshark-deb/
 
 # Install TShark
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
-	&& apt-get install -y libglib2.0-0 libpcap0.8 \
-		libc-ares2 liblua5.2-0 libsmi2ldbl libsnappy1v5 \
-		libcap2 libnl-3-200 libnl-genl-3-200 libssh-gcrypt-4 libcap2-bin \
-	&& dpkg -i /root/libwsutil11_${WIRESHARK_VERSION}_amd64.deb \
-	&& dpkg -i /root/libwiretap10_${WIRESHARK_VERSION}_amd64.deb \
-	&& dpkg -i /root/libwireshark-data_${WIRESHARK_VERSION}_all.deb \
-	&& dpkg -i /root/libwireshark13_${WIRESHARK_VERSION}_amd64.deb \
-	&& dpkg -i /root/wireshark-common_${WIRESHARK_VERSION}_amd64.deb \
-	&& dpkg -i /root/tshark_${WIRESHARK_VERSION}_amd64.deb \
+	&& /root/install-deb.sh --deb-dir "/root/wireshark-deb/" "/root/wireshark-deb/tshark_+([[:digit:]_.])_amd64.deb"  \
     && apt-get autoremove -y \
     && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/* \
-	&& rm -f /root/*.deb
+	&& rm -rf /root/wireshark-deb/ \
+	&& rm /root/install-deb.sh
 ENV DEBIAN_FRONTEND=dialog
 
 # Add permissions to run tshark as non root user
@@ -122,7 +112,9 @@ USER debian
 
 # Set tools related labels
 ARG WIRESHARK_VERSION
+ARG WIRESHARK_BRANCH
 LABEL wireshark.version=${WIRESHARK_VERSION}
+LABEL wireshark.branch=${WIRESHARK_BRANCH}
 
 # Set default cmd
 ENV ENTRYPOINT_DEFAULT_CMD /usr/bin/tshark
@@ -154,23 +146,20 @@ FROM tshark as wireshark
 # Switch to root user for installation
 USER root
 
+# Copy install script
+COPY install-deb.sh /root/
+
 # Copy Wireshark deb files
-ARG WIRESHARK_VERSION
-COPY --from=wireshark-build \
-	/root/wireshark-qt_${WIRESHARK_VERSION}_amd64.deb \
-	/root/wireshark_${WIRESHARK_VERSION}_amd64.deb \
-	/root/
+COPY --from=wireshark-build /root/*.deb /root/wireshark-deb/
 
 # Install Wireshark
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
-	&& apt-get install -y libminizip1 libnl-route-3-200 libqt5core5a libqt5gui5 libqt5multimedia5 libqt5printsupport5 libqt5widgets5 libspeexdsp1 \
-	&& dpkg -i /root/wireshark-qt_${WIRESHARK_VERSION}_amd64.deb \
-	&& dpkg -i /root/wireshark_${WIRESHARK_VERSION}_amd64.deb \
+	&& /root/install-deb.sh --deb-dir "/root/wireshark-deb/" "/root/wireshark-deb/wireshark_+([[:digit:]_.])_amd64.deb"  \
     && apt-get autoremove -y \
     && apt-get clean -y \
-    && rm -rf /var/lib/apt/lists/* \
-	&& rm -f /root/*.deb
+	&& rm -rf /root/wireshark-deb/ \
+	&& rm /root/install-deb.sh
 ENV DEBIAN_FRONTEND=dialog
 
 # Install xpra
@@ -187,15 +176,6 @@ ENV DEBIAN_FRONTEND=dialog
 # copy xpra config file
 COPY ./xpra.conf /etc/xpra/xpra.conf
 
-# create default certificate and allow wireshark user to read it
-RUN openssl req -new -x509 -days 3650 -nodes -newkey RSA:2048 -sha256 \
-		-subj "/C=DE/ST=Hessen/L=Frankfurt/O=Wireshark/OU=Wireshark/CN=localhost" \
-		-out /etc/xpra/cert.pem -keyout /etc/xpra/key.pem \
-	&& cat /etc/xpra/key.pem /etc/xpra/cert.pem > /etc/xpra/ssl-cert.pem \
-	&& chmod 644 /etc/xpra/ssl-cert.pem \
-	&& rm /etc/xpra/cert.pem \
-	&& rm /etc/xpra/key.pem
-
 # ensure that wireshark is using text mode for best display quality in HTML5 client
 RUN echo -e "\nclass-instance:wireshark=text" >> /usr/share/xpra/content-type/50_class.conf
 
@@ -209,10 +189,19 @@ RUN mkdir -p /tmp/xpra \
 	&& ./setup_html5.py \
 	&& cd / \
 	&& rm -rf /tmp/xpra
-	
+
+# create default certificate and allow wireshark user to read it
+RUN openssl req -new -x509 -days 3650 -nodes -newkey RSA:2048 -sha256 \
+		-subj "/C=DE/ST=Hessen/L=Frankfurt/O=Wireshark/OU=Wireshark/CN=localhost" \
+		-out /etc/xpra/cert.pem -keyout /etc/xpra/key.pem \
+	&& cat /etc/xpra/key.pem /etc/xpra/cert.pem > /etc/xpra/ssl-cert.pem \
+	&& chmod 644 /etc/xpra/ssl-cert.pem \
+	&& rm /etc/xpra/cert.pem \
+	&& rm /etc/xpra/key.pem
+
 # create run directory for xpra socket and set correct permissions
-RUN mkdir -p /run/user/$(id -u debian)/xpra
-RUN chown -R debian:debian /run/user/$(id -u debian)
+RUN mkdir -p /run/user/$(id -u debian)/xpra \
+	&& chown -R debian:debian /run/user/$(id -u debian)
 
 # Switch to non root user
 RUN usermod -a -G xpra debian
@@ -227,5 +216,3 @@ EXPOSE 14500
 # run xpra, options --daemon and --no-printing only work if specified as parameters to xpra start
 ENV ENTRYPOINT_DEFAULT_CMD "/usr/bin/xpra start --daemon=no"
 CMD ["/usr/bin/xpra","start","--daemon=no"]
-
-
