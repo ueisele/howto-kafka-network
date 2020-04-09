@@ -10,6 +10,7 @@ BUILD=false
 DOCKERREGISTRY_USER="ueisele"
 DEBIAN_RELEASE="bullseye"
 TERMSHARK_VERSION="2.1.1"
+XPRA_VERSION="3.0.7"
 
 function usage () {
     echo "$0: $1" >&2
@@ -61,6 +62,15 @@ function build () {
         docker tag "${DOCKERREGISTRY_USER}/tshark-termshark:${WIRESHARK_VERSION}${VERSION_SUFFIX}-${TERMSHARK_VERSION}-${DEBIAN_RELEASE}" "${DOCKERREGISTRY_USER}/tshark-termshark:latest"
     fi
 
+    docker build --target net-tools-xpra \
+        -t "${DOCKERREGISTRY_USER}/net-tools-xpra:${DEBIAN_RELEASE}-${XPRA_VERSION}" \
+        --build-arg DEBIAN_RELEASE=${DEBIAN_RELEASE} \
+        --build-arg XPRA_VERSION=${XPRA_VERSION} \
+        ${SCRIPT_DIR}
+    docker tag "${DOCKERREGISTRY_USER}/net-tools-xpra:${DEBIAN_RELEASE}-${XPRA_VERSION}" "${DOCKERREGISTRY_USER}/net-tools-xpra:${DEBIAN_RELEASE}-${XPRA_VERSION}-$(resolveBuildTimestamp ${DOCKERREGISTRY_USER}/net-tools-xpra:${DEBIAN_RELEASE}-${XPRA_VERSION})"
+    docker tag "${DOCKERREGISTRY_USER}/net-tools-xpra:${DEBIAN_RELEASE}-${XPRA_VERSION}" "${DOCKERREGISTRY_USER}/net-tools-xpra:${DEBIAN_RELEASE}"
+    docker tag "${DOCKERREGISTRY_USER}/net-tools-xpra:${DEBIAN_RELEASE}-${XPRA_VERSION}" "${DOCKERREGISTRY_USER}/net-tools-xpra:latest"
+
     docker build --target wireshark \
         -t "${DOCKERREGISTRY_USER}/wireshark:${WIRESHARK_VERSION}${VERSION_SUFFIX}-${DEBIAN_RELEASE}" \
         --build-arg DEBIAN_RELEASE=${DEBIAN_RELEASE} \
@@ -93,6 +103,11 @@ function push () {
     if [[ "${IS_WIRESHARK_RELEASE}" == "true" ]]; then
         docker push "${DOCKERREGISTRY_USER}/tshark-termshark:latest"
     fi
+
+    docker push "${DOCKERREGISTRY_USER}/net-tools-xpra:${DEBIAN_RELEASE}-${XPRA_VERSION}-$(resolveBuildTimestamp ${DOCKERREGISTRY_USER}/net-tools-xpra:${DEBIAN_RELEASE}-${XPRA_VERSION})"
+    docker push "${DOCKERREGISTRY_USER}/net-tools-xpra:${DEBIAN_RELEASE}-${XPRA_VERSION}"
+    docker push "${DOCKERREGISTRY_USER}/net-tools-xpra:${DEBIAN_RELEASE}"
+    docker push "${DOCKERREGISTRY_USER}/net-tools-xpra:latest"
 
     docker push "${DOCKERREGISTRY_USER}/wireshark:${WIRESHARK_VERSION}${VERSION_SUFFIX}-${DEBIAN_RELEASE}-$(resolveBuildTimestamp ${DOCKERREGISTRY_USER}/wireshark:${WIRESHARK_VERSION}${VERSION_SUFFIX}-${DEBIAN_RELEASE})"
     docker push "${DOCKERREGISTRY_USER}/wireshark:${WIRESHARK_VERSION}${VERSION_SUFFIX}-${DEBIAN_RELEASE}"

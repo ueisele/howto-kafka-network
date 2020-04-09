@@ -43,5 +43,5 @@ docker run --rm --cap-add NET_ADMIN --cap-add=NET_RAW -p 14500:14500 ueisele/wir
 Access Wireshark via the browser using the IP/Hostname of your docker host and providing username and password (change password=wireshark if you provided a different password) using e.g.
 
 ----
-https://localhost:14500/?username=debian&password=wireshark
+https://localhost:14500/?username=debian&password=debian
 ----

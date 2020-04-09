@@ -140,8 +140,68 @@ ENV ENTRYPOINT_DEFAULT_CMD /usr/bin/termshark
 CMD ["/usr/bin/termshark"]
 
 
+## Create Xpra base image ##
+FROM net-tools as net-tools-xpra
+
+# Switch to root user for installation
+USER root
+
+# Install xpra
+ARG XPRA_VERSION=3.0.7
+LABEL xpra.version=${XPRA_VERSION}
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update \
+	&& apt-get install -y xpra=${XPRA_VERSION}* python3-netifaces python3-pyinotify xauth websockify uglifyjs.terser xterm \
+    && apt-get autoremove -y \
+    && apt-get clean -y \
+    && rm -rf /var/lib/apt/lists/* \
+ENV DEBIAN_FRONTEND=dialog
+
+# Configure Xpra for docker
+RUN sed -i 's/^\(socket-dirs.*\)$/#\1/g' /etc/xpra/conf.d/10_network.conf
+COPY ./xpra_docker.conf /etc/xpra/conf.d/90_xpra_docker.conf
+
+# install xpra-html5
+RUN mkdir -p /tmp/xpra \
+	&& (curl -L https://xpra.org/src/xpra-html5-${XPRA_VERSION}.tar.xz | tar -xJ --strip-components=1 -C /tmp/xpra) \
+	&& sed -i "s/python/python3/" /tmp/xpra/setup_html5.py \
+	&& sed -i "s/uglifyjs/uglifyjs.terser/" /tmp/xpra/setup_html5.py \
+	&& sed -i "s/\"--screw-ie8\",//" /tmp/xpra/setup_html5.py \
+	&& cd /tmp/xpra/ \
+	&& ./setup_html5.py \
+	&& cd / \
+	&& rm -rf /tmp/xpra
+
+# create default certificate and allow wireshark user to read it
+RUN openssl req -new -x509 -days 3650 -nodes -newkey RSA:2048 -sha256 \
+		-subj "/C=DE/ST=Hessen/L=Frankfurt/O=ueisle/OU=xpra/CN=localhost" \
+		-out /etc/xpra/cert.pem -keyout /etc/xpra/key.pem \
+	&& cat /etc/xpra/key.pem /etc/xpra/cert.pem > /etc/xpra/ssl-cert.pem \
+	&& chmod 644 /etc/xpra/ssl-cert.pem \
+	&& rm /etc/xpra/cert.pem \
+	&& rm /etc/xpra/key.pem
+
+# create run directory for xpra socket and set correct permissions
+RUN mkdir -p /run/user/$(id -u debian)/xpra \
+	&& chown -R debian:xpra /run/user/$(id -u debian)
+RUN usermod -a -G xpra debian
+
+# Switch to non root user
+USER debian
+
+# set default password to access wireshark via xpra
+ENV XPRA_PW debian
+
+# expose xpra default port
+EXPOSE 14500
+
+# run xpra, options --daemon and --no-printing only work if specified as parameters to xpra start
+ENV ENTRYPOINT_DEFAULT_CMD "/usr/bin/xpra start :10 --daemon=no"
+CMD ["/usr/bin/xpra","start", ":10", "--daemon=no", "--start-child=xterm", "--exit-with-children=yes"]
+
+
 ## Create wireshark image ##
-FROM tshark as wireshark
+FROM net-tools-xpra as wireshark
 
 # Switch to root user for installation
 USER root
@@ -162,57 +222,24 @@ RUN apt-get update \
 	&& rm /root/install-deb.sh
 ENV DEBIAN_FRONTEND=dialog
 
-# Install xpra
-ARG XPRA_VERSION=3.0.7
-LABEL xpra.version=${XPRA_VERSION}
-ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update \
-	&& apt-get install -y xpra=${XPRA_VERSION}* python3-netifaces xauth websockify uglifyjs.terser \
-    && apt-get autoremove -y \
-    && apt-get clean -y \
-    && rm -rf /var/lib/apt/lists/* \
-ENV DEBIAN_FRONTEND=dialog
+# Add permissions to run tshark as non root user
+RUN setcap 'CAP_NET_RAW+eip CAP_NET_ADMIN+eip' /usr/bin/dumpcap
 
 # copy xpra config file
-COPY ./xpra.conf /etc/xpra/xpra.conf
+COPY ./xpra_wireshark.conf /etc/xpra/xpra.conf
 
 # ensure that wireshark is using text mode for best display quality in HTML5 client
 RUN echo -e "\nclass-instance:wireshark=text" >> /usr/share/xpra/content-type/50_class.conf
 
-# install xpra-html5
-RUN mkdir -p /tmp/xpra \
-	&& (curl -L https://xpra.org/src/xpra-html5-${XPRA_VERSION}.tar.xz | tar -xJ --strip-components=1 -C /tmp/xpra) \
-	&& sed -i "s/python/python3/" /tmp/xpra/setup_html5.py \
-	&& sed -i "s/uglifyjs/uglifyjs.terser/" /tmp/xpra/setup_html5.py \
-	&& sed -i "s/\"--screw-ie8\",//" /tmp/xpra/setup_html5.py \
-	&& cd /tmp/xpra/ \
-	&& ./setup_html5.py \
-	&& cd / \
-	&& rm -rf /tmp/xpra
-
-# create default certificate and allow wireshark user to read it
-RUN openssl req -new -x509 -days 3650 -nodes -newkey RSA:2048 -sha256 \
-		-subj "/C=DE/ST=Hessen/L=Frankfurt/O=Wireshark/OU=Wireshark/CN=localhost" \
-		-out /etc/xpra/cert.pem -keyout /etc/xpra/key.pem \
-	&& cat /etc/xpra/key.pem /etc/xpra/cert.pem > /etc/xpra/ssl-cert.pem \
-	&& chmod 644 /etc/xpra/ssl-cert.pem \
-	&& rm /etc/xpra/cert.pem \
-	&& rm /etc/xpra/key.pem
-
-# create run directory for xpra socket and set correct permissions
-RUN mkdir -p /run/user/$(id -u debian)/xpra \
-	&& chown -R debian:debian /run/user/$(id -u debian)
-
 # Switch to non root user
-RUN usermod -a -G xpra debian
 USER debian
 
-# set default password to access wireshark via xpra
-ENV XPRA_PW wireshark
-
-# expose xpra default port
-EXPOSE 14500
+# Set tools related labels
+ARG WIRESHARK_VERSION
+ARG WIRESHARK_BRANCH
+LABEL wireshark.version=${WIRESHARK_VERSION}
+LABEL wireshark.branch=${WIRESHARK_BRANCH}
 
 # run xpra, options --daemon and --no-printing only work if specified as parameters to xpra start
-ENV ENTRYPOINT_DEFAULT_CMD "/usr/bin/xpra start --daemon=no"
-CMD ["/usr/bin/xpra","start","--daemon=no"]
+ENV ENTRYPOINT_DEFAULT_CMD "/usr/bin/xpra start :10 --daemon=no"
+CMD ["/usr/bin/xpra","start", ":10", "--daemon=no"]
