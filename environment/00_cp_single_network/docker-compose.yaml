@@ -56,14 +56,17 @@ services:
     restart: unless-stopped
     hostname: restproxy1
     depends_on:
-      - zookeeper
+      - zookeeper1
+      - zookeeper2
+      - zookeeper3
       - kafka1
       - kafka2
       - kafka3
       - schemaregistry1
-      - shcemaregistry2
+      - schemaregistry2
     environment:
       KAFKA_REST_HOST_NAME: restproxy1.${DOMAIN_INTERN}
+      KAFKA_REST_ID: "restproxy"
       KAFKA_REST_BOOTSTRAP_SERVERS: 'kafka.${DOMAIN_INTERN}:9092'
       KAFKA_REST_LISTENERS: "http://0.0.0.0:8082"
       KAFKA_REST_SCHEMA_REGISTRY_URL: 'http://schemaregistry.${DOMAIN_INTERN}:8081'
@@ -78,20 +81,20 @@ services:
     restart: unless-stopped
     hostname: restproxy2
     depends_on:
-      - zookeeper
+      - zookeeper1
+      - zookeeper2
+      - zookeeper3
       - kafka1
       - kafka2
       - kafka3
       - schemaregistry1
-      - shcemaregistry2
+      - schemaregistry2
     environment:
       KAFKA_REST_HOST_NAME: restproxy2.${DOMAIN_INTERN}
-      KAFKA_REST_ID: "2"
-      KAFKA_REST_ZOOKEEPER_CONNECT: zookeeper1.${DOMAIN_INTERN}:2181,zookeeper2.${DOMAIN_INTERN}:2181,zookeeper3.${DOMAIN_INTERN}:2181
+      KAFKA_REST_ID: "restproxy"
       KAFKA_REST_BOOTSTRAP_SERVERS: 'kafka.${DOMAIN_INTERN}:9092'
       KAFKA_REST_LISTENERS: "http://0.0.0.0:8082"
       KAFKA_REST_SCHEMA_REGISTRY_URL: 'http://schemaregistry.${DOMAIN_INTERN}:8081'
-      KAFKA_REST_CONSUMER_THREADS: "50"
     networks:
       kafka:
         aliases:
