@@ -26,6 +26,9 @@ services:
     hostname: envoy-kafka1
     volumes:
       - ./envoy-kafka1.yaml:/etc/envoy/envoy.yaml
+    expose:
+      - 9092
+      - 10000
     networks:
       app:
         aliases:
@@ -42,6 +45,9 @@ services:
     image: envoyproxy/envoy-dev:latest
     restart: unless-stopped
     hostname: envoy-kafka2
+    expose:
+      - 9092
+      - 10000
     volumes:
       - ./envoy-kafka2.yaml:/etc/envoy/envoy.yaml
     networks:
@@ -62,6 +68,9 @@ services:
     hostname: envoy-kafka3
     volumes:
       - ./envoy-kafka3.yaml:/etc/envoy/envoy.yaml
+    expose:
+      - 9092
+      - 10000
     networks:
       app:
         aliases:
