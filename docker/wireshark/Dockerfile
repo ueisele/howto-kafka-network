@@ -1,5 +1,5 @@
 ARG DEBIAN_RELEASE=bullseye
-ARG WIRESHARK_VERSION=3.2.2
+ARG WIRESHARK_VERSION=3.2.6
 ARG WIRESHARK_BRANCH=wireshark-${WIRESHARK_VERSION}
 
 ## Build Wireshark ##
@@ -147,7 +147,7 @@ FROM net-tools as net-tools-xpra
 USER root
 
 # Install xpra
-ARG XPRA_VERSION=3.0.7
+ARG XPRA_VERSION=3.0.9
 LABEL xpra.version=${XPRA_VERSION}
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \

@@ -8,9 +8,9 @@ popd > /dev/null
 PUSH=false
 BUILD=false
 DOCKERREGISTRY_USER="ueisele"
-DEBIAN_RELEASE="bullseye"
+DEBIAN_RELEASE="sid"
 TERMSHARK_VERSION="2.1.1"
-XPRA_VERSION="3.0.7"
+XPRA_VERSION="3.0.9"
 
 function usage () {
     echo "$0: $1" >&2
