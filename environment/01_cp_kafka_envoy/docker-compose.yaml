@@ -16,14 +16,16 @@ services:
     image: confluentinc/cp-kafka:${VERSION_CONFLUENT}
     restart: unless-stopped
     command: [tail, -f, /dev/null]
+    tty: true
     networks:
       - app
 
   # Envoy
   envoy-kafka1:
-    image: envoyproxy/envoy-dev:latest
+    image: envoyproxy/envoy-dev:${VERSION_ENVOY_DEV}
     restart: unless-stopped
     hostname: envoy-kafka1
+    command: ["envoy", "-c", "/etc/envoy/envoy.yaml", "--component-log-level", "kafka:trace"]
     volumes:
       - ./envoy-kafka1.yaml:/etc/envoy/envoy.yaml
     expose:
@@ -42,9 +44,10 @@ services:
           - envoy-kafka1.${DOMAIN_INTERN}
 
   envoy-kafka2:
-    image: envoyproxy/envoy-dev:latest
+    image: envoyproxy/envoy-dev:${VERSION_ENVOY_DEV}
     restart: unless-stopped
     hostname: envoy-kafka2
+    command: ["envoy", "-c", "/etc/envoy/envoy.yaml", "--component-log-level", "kafka:trace"]
     expose:
       - 9092
       - 10000
@@ -63,9 +66,10 @@ services:
           - envoy-kafka2.${DOMAIN_INTERN}
 
   envoy-kafka3:
-    image: envoyproxy/envoy-dev:latest
+    image: envoyproxy/envoy-dev:${VERSION_ENVOY_DEV}
     restart: unless-stopped
     hostname: envoy-kafka3
+    command: ["envoy", "-c", "/etc/envoy/envoy.yaml", "--component-log-level", "kafka:trace"]
     volumes:
       - ./envoy-kafka3.yaml:/etc/envoy/envoy.yaml
     expose:
