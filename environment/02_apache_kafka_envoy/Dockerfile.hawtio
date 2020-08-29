@@ -1,0 +1,14 @@
+FROM adoptopenjdk:11-jre-openj9
+
+ARG HAWTIO_VERSION=2.10.1
+ARG HAWTIO_DIR=/opt/hawtio
+ARG HAWTIO_FILENAME=hawtio-app-${HAWTIO_VERSION}.jar
+RUN mkdir -p ${HAWTIO_DIR} \
+    && curl -L https://repo1.maven.org/maven2/io/hawt/hawtio-app/${HAWTIO_VERSION}/hawtio-app-${HAWTIO_VERSION}.jar -o ${HAWTIO_DIR}/${HAWTIO_FILENAME}
+ARG HAWTIO_PORT=8081
+ENV HAWTIO_DIR=${HAWTIO_DIR} \
+    HAWTIO_FILENAME=${HAWTIO_FILENAME} \
+    HAWTIO_PORT=${HAWTIO_PORT}
+EXPOSE ${HAWTIO_PORT}
+ENTRYPOINT ["/bin/bash", "-c"]
+CMD ["java -Dhawtio.proxyWhitelist=* -Dhawtio.proxyAllowlist=* -jar ${HAWTIO_DIR}/${HAWTIO_FILENAME} --port ${HAWTIO_PORT}"]

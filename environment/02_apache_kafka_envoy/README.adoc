@@ -1,0 +1,3 @@
+= Envoy Kafka Broker Filter
+
+see https://www.envoyproxy.io/docs/envoy/latest/configuration/listeners/network_filters/kafka_broker_filter
