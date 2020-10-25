@@ -1,3 +1,5 @@
 = Envoy Kafka Broker Filter
 
 see https://www.envoyproxy.io/docs/envoy/latest/configuration/listeners/network_filters/kafka_broker_filter
+
+Envoy Prometheus endpoint: curl http://envoy-kafka3:10000/stats/prometheus
